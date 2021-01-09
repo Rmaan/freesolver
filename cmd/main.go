@@ -8,4 +8,5 @@ import (
 func main() {
 	g := freesolver.GenerateGame()
 	fmt.Println(g)
+	freesolver.Solve(g)
 }
