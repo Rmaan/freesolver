@@ -1,0 +1,2 @@
+# freesolver
+A freecell solver
