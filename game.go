@@ -41,7 +41,9 @@ func (r Rank) String() string {
 	switch r {
 	case 0:
 		return "-"
-	case 1, 2, 3, 4, 5, 6, 7, 8, 9, 10:
+	case 1:
+		return "A"
+	case 2, 3, 4, 5, 6, 7, 8, 9, 10:
 		return strconv.Itoa(int(r))
 	case 11:
 		return "J"
@@ -84,6 +86,8 @@ type GameMoment struct {
 	Foundation  [SuitCount]Rank
 
 	before *GameMoment
+	depth  int
+	score  int
 }
 
 func (g GameMoment) String() string {
@@ -128,10 +132,10 @@ func (g *GameMoment) cascadePut(card Card, col int) {
 }
 
 func (g *GameMoment) cascadeRemove(col int) {
-	g.Cascades[col][g.CascadeLens[col] - 1] = Card{}
+	g.Cascades[col][g.CascadeLens[col]-1] = Card{}
 	g.CascadeLens[col]--
 }
 
 func (g *GameMoment) cascadeCard(col int) Card {
-	return g.Cascades[col][g.CascadeLens[col] - 1]
+	return g.Cascades[col][g.CascadeLens[col]-1]
 }
