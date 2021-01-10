@@ -86,7 +86,7 @@ type GameMoment struct {
 	Foundation  [SuitCount]Rank
 
 	before *GameMoment
-	depth  int
+	moves  int
 	score  int
 }
 

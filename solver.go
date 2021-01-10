@@ -3,7 +3,6 @@ package freesolver
 import (
 	"container/heap"
 	"log"
-	"os"
 )
 
 type GameHeap []GameMoment
@@ -56,7 +55,7 @@ func calcScore(g GameMoment) int {
 			}
 		}
 	}
-	return done*1000 + freeCascades*200 + freecells*100 + sortedPairCount*5 - g.depth
+	return done*1000 + freeCascades*200 + freecells*100 + sortedPairCount*5 - g.moves
 }
 
 type Solver struct {
@@ -69,17 +68,17 @@ func (s *Solver) push(g GameMoment) {
 		return
 	}
 	gBefore := g.before
-	gDepth := g.depth
+	gDepth := g.moves
 	gScore := g.score
 	g.before = nil
-	g.depth = 0
+	g.moves = 0
 	g.score = 0
 	if s.cache[g] {
 		return
 	}
 	s.cache[g] = true
 	g.before = gBefore
-	g.depth = gDepth
+	g.moves = gDepth
 	g.score = gScore
 
 	g.score = calcScore(g)
@@ -93,22 +92,19 @@ func NewSolver(g GameMoment) *Solver {
 	}
 }
 
-func (s *Solver) Solve() {
+func (s *Solver) Solve() GameMoment {
 	for callCount := 1; s.heap.Len() > 0; callCount++ {
 		g := heap.Pop(s.heap).(GameMoment)
 		if g.isWon() {
-			log.Printf("called %dK queue %dK depth %d score %d game:\n%s", callCount/1000, s.heap.Len()/1000, g.depth, g.score, g.FullGameString())
-			log.Printf("Won!!!")
-			os.Exit(0)
+			log.Printf("Won! called %dK queue %dK cache %dM moves %d score %d", callCount/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
+			return g
 		}
 		if callCount%100000 == 0 {
-			log.Printf("called %dK queue %dK depth %d score %d game:\n%s", callCount/1000, s.heap.Len()/1000, g.depth, g.score, g.String())
+			log.Printf("called %dK queue %dK cache %dM moves %d score %d game:\n%s", callCount/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score, g.String())
 		}
 		s.addMoves(g)
-		//if callCount > 20 {
-		//	return
-		//}
 	}
+	panic("Not solvable! It's usually a bug!!")
 }
 
 func canMove(from, to Card) bool {
@@ -123,26 +119,26 @@ func canMove(from, to Card) bool {
 
 func hasRepeats(g *GameMoment) bool {
 	gBefore := g.before
-	gDepth := g.depth
+	gDepth := g.moves
 	gScore := g.score
 	g.before = nil
-	g.depth = 0
+	g.moves = 0
 	g.score = 0
 
 	for old, count := gBefore, 0; old != nil && count < 5; old = old.before {
 		oldBefore := old.before
-		oldDepth := old.depth
+		oldDepth := old.moves
 		oldScore := old.score
 		old.before = nil
-		old.depth = 0
+		old.moves = 0
 		old.score = 0
 		isEqual := *g == *old
 		old.before = oldBefore
-		old.depth = oldDepth
+		old.moves = oldDepth
 		old.score = oldScore
 		if isEqual {
 			g.before = gBefore
-			g.depth = gDepth
+			g.moves = gDepth
 			g.score = gScore
 			return true
 		}
@@ -150,7 +146,7 @@ func hasRepeats(g *GameMoment) bool {
 	}
 
 	g.before = gBefore
-	g.depth = gDepth
+	g.moves = gDepth
 	g.score = gScore
 	return false
 }
@@ -166,7 +162,7 @@ func (s *Solver) addMoves(g GameMoment) {
 		card := g.cascadeCard(col)
 		if g.Foundation[card.Suit]+1 == card.Rank {
 			g := g
-			g.depth++
+			g.moves++
 			g.before = gp
 			g.Foundation[card.Suit]++
 			g.cascadeRemove(col)
@@ -178,7 +174,7 @@ func (s *Solver) addMoves(g GameMoment) {
 	for idx, card := range g.FreeCells {
 		if g.Foundation[card.Suit]+1 == card.Rank {
 			g := g
-			g.depth++
+			g.moves++
 			g.before = gp
 			g.Foundation[card.Suit]++
 			g.FreeCells[idx] = Card{}
@@ -194,7 +190,7 @@ func (s *Solver) addMoves(g GameMoment) {
 		for col := range g.Cascades {
 			if g.CascadeLens[col] == 0 || canMove(card, g.cascadeCard(col)) {
 				g := g
-				g.depth++
+				g.moves++
 				g.before = gp
 				g.cascadePut(card, col)
 				g.FreeCells[idx] = Card{}
@@ -214,7 +210,7 @@ func (s *Solver) addMoves(g GameMoment) {
 			}
 			if g.CascadeLens[colTo] == 0 || canMove(g.cascadeCard(colFrom), g.cascadeCard(colTo)) {
 				g := g
-				g.depth++
+				g.moves++
 				g.before = gp
 				g.cascadePut(g.cascadeCard(colFrom), colTo)
 				g.cascadeRemove(colFrom)
@@ -239,7 +235,7 @@ func (s *Solver) addMoves(g GameMoment) {
 			continue
 		}
 		g := g
-		g.depth++
+		g.moves++
 		g.before = gp
 		g.FreeCells[emptyFreecellIdx] = g.cascadeCard(colFrom)
 		g.cascadeRemove(colFrom)
