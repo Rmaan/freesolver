@@ -10,15 +10,20 @@ type Suit uint8
 
 const SuitCount = 4
 
+const Spades Suit = 0
+const Hearts Suit = 1
+const Diamonds Suit = 2
+const Clubs Suit = 3
+
 func (s Suit) String() string {
 	switch s {
-	case 0:
+	case Spades:
 		return "♤"
-	case 1:
+	case Hearts:
 		return "♡"
-	case 2:
+	case Diamonds:
 		return "♢"
-	case 3:
+	case Clubs:
 		return "♧"
 	}
 	return fmt.Sprintf("<Invalid suit %d>", s)
@@ -35,6 +40,7 @@ func (s Suit) IsBlack() bool {
 type Rank uint8
 
 const RankCount = 13
+
 const King Rank = 13
 const Queen Rank = 12
 const Jack Rank = 11
@@ -58,10 +64,11 @@ func (r Rank) String() string {
 }
 
 type Card uint8
+
 var EmptyCard Card
 
 func NewCard(s Suit, r Rank) Card {
-	return Card(uint8(s & 3) | uint8(r << 2))
+	return Card(uint8(s&3) | uint8(r<<2))
 }
 
 func (c Card) Suit() Suit {

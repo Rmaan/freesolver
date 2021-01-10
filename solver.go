@@ -31,12 +31,15 @@ func (h *GameHeap) Pop() interface{} {
 	return item
 }
 
+// Adding ace to foundation has much more value than a jack
+var foundationScoreTable = [...]int{0, 13, 25, 36, 46, 55, 63, 70, 76, 81, 85, 88, 90, 91}
+
 func calcScore(g GameMoment) int32 {
-	done := 0
+	foundationScore := 0
 	maxFoundation := g.Foundation[0]
 	minFoundation := g.Foundation[0]
 	for _, x := range g.Foundation {
-		done += int(x)
+		foundationScore += foundationScoreTable[x]
 		if x > maxFoundation {
 			maxFoundation = x
 		}
@@ -45,14 +48,14 @@ func calcScore(g GameMoment) int32 {
 		}
 	}
 
-	if maxFoundation - minFoundation > 3 {
-		done--
+	if maxFoundation-minFoundation > 3 {
+		foundationScore -= 10
 	}
-	if maxFoundation - minFoundation > 6 {
-		done--
+	if maxFoundation-minFoundation > 6 {
+		foundationScore -= 20
 	}
-	if maxFoundation - minFoundation > 9 {
-		done--
+	if maxFoundation-minFoundation > 9 {
+		foundationScore -= 30
 	}
 
 	freecells := 0
@@ -77,22 +80,31 @@ func calcScore(g GameMoment) int32 {
 		}
 
 		cof := 1
-		if sequence == int(g.CascadeLens[col] - 1) {
+		if sequence == int(g.CascadeLens[col]-1) {
 			cof = 10
-			if g.cascadeCard(col).Rank() == King {
+			if g.Cascades[col][0].Rank() == King {
 				cof = 50
-			} else if g.cascadeCard(col).Rank() == Queen {
+			} else if g.Cascades[col][0].Rank() == Queen {
 				cof = 30
+			} else if g.Cascades[col][0].Rank() == Jack {
+				cof = 15
 			}
 		}
 		sortedPairCount += cof * sequence
 	}
-	return int32(done*500 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves) * 10)
+	return int32(foundationScore*50 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves)*10)
+}
+
+func calcMinMovesNeeded(g *GameMoment) int32 {
+	return int32(4*King - g.Foundation[0] - g.Foundation[1] - g.Foundation[2] - g.Foundation[3])
 }
 
 type Solver struct {
+	Debug bool
 	heap  *GameHeap
 	cache map[GameMoment]bool
+
+	shortestWin int32
 }
 
 func sortFreeCells(g *GameMoment) {
@@ -130,7 +142,6 @@ func (s *Solver) push(g GameMoment) {
 	g.before = nil
 	g.moves = 0
 	g.score = 0
-	g.score = 0
 	if s.cache[g] {
 		return
 	}
@@ -144,26 +155,33 @@ func (s *Solver) push(g GameMoment) {
 
 func NewSolver(g GameMoment) *Solver {
 	s := &Solver{
-		heap:  &GameHeap{},
-		cache: map[GameMoment]bool{},
+		heap:        &GameHeap{},
+		cache:       map[GameMoment]bool{},
+		shortestWin: 999,
 	}
 	s.push(g)
 	return s
 }
 
 func (s *Solver) Solve() GameMoment {
-	for callCount := 1; s.heap.Len() > 0; callCount++ {
+	for tries := 1; s.heap.Len() > 0; tries++ {
 		g := heap.Pop(s.heap).(GameMoment)
+		if g.moves+calcMinMovesNeeded(&g) >= s.shortestWin {
+			continue
+		}
 		if g.isWon() {
-			log.Printf("Won! called %dK queue %dK cache %dM moves %d score %d", callCount/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
+			if s.Debug {
+				log.Printf("WON!!! tried=%dK queue=%dK cache=%dM moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
+			}
+			s.shortestWin = g.moves
 			return g
 		}
-		if callCount%100000 == 0 {
-			log.Printf("called %dK queue %dK cache %dM moves %d score %d game:\n%s", callCount/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score, g.String())
+		if s.Debug && tries%100000 == 0 {
+			log.Printf("tried=%dK queue=%dK cache=%dM moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
 		}
 		s.addMoves(g)
 	}
-	panic("Not solvable! It's usually a bug!!")
+	panic("Not solvable! Probably it's a bug!!")
 }
 
 func canMove(from, to Card) bool {
