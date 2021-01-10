@@ -76,13 +76,28 @@ func sortFreeCells(g *GameMoment) {
 	}
 }
 
+func sortCascades(g *GameMoment) {
+	swapped := true
+	for swapped {
+		swapped = false
+		for i := 1; i < len(g.Cascades); i++ {
+			if g.Cascades[i-1][0] > g.Cascades[i][0] {
+				g.Cascades[i-1], g.Cascades[i] = g.Cascades[i], g.Cascades[i-1]
+				g.CascadeLens[i-1], g.CascadeLens[i] = g.CascadeLens[i], g.CascadeLens[i-1]
+				swapped = true
+			}
+		}
+	}
+}
+
 func (s *Solver) push(g GameMoment) {
 	sortFreeCells(&g)
+	sortCascades(&g)
 	gBefore := g.before
 	gDepth := g.moves
-	gScore := g.score
 	g.before = nil
 	g.moves = 0
+	g.score = 0
 	g.score = 0
 	if s.cache[g] {
 		return
@@ -90,9 +105,8 @@ func (s *Solver) push(g GameMoment) {
 	s.cache[g] = true
 	g.before = gBefore
 	g.moves = gDepth
-	g.score = gScore
-
 	g.score = calcScore(g)
+
 	heap.Push(s.heap, g)
 }
 
@@ -146,6 +160,7 @@ func (s *Solver) addMoves(g GameMoment) {
 			g.Foundation[card.Suit()]++
 			g.cascadeRemove(col)
 			s.push(g)
+			return
 		}
 	}
 
@@ -158,6 +173,7 @@ func (s *Solver) addMoves(g GameMoment) {
 			g.Foundation[card.Suit()]++
 			g.FreeCells[idx] = EmptyCard
 			s.push(g)
+			return
 		}
 	}
 

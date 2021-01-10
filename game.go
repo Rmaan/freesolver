@@ -86,7 +86,7 @@ func (c Card) IsEmpty() bool {
 
 const FreeCellCount = 4
 const CascadesCount = 8
-const MaxCascadeLen = 14
+const MaxCascadeLen = 17
 
 type GameMoment struct {
 	FreeCells   [FreeCellCount]Card
@@ -101,7 +101,7 @@ type GameMoment struct {
 
 func (g GameMoment) String() string {
 	b := &strings.Builder{}
-	fmt.Fprintf(b, "Foundation: %s%s %s%s %s%s %s %s\n", Suit(0), g.Foundation[0], Suit(1), g.Foundation[1], Suit(2), g.Foundation[2], Suit(3), g.Foundation[3])
+	fmt.Fprintf(b, "Foundation: %s%s %s%s %s%s %s%s\n", Suit(0), g.Foundation[0], Suit(1), g.Foundation[1], Suit(2), g.Foundation[2], Suit(3), g.Foundation[3])
 	fmt.Fprintf(b, "FreeCells: %s %s %s %s\n", g.FreeCells[0], g.FreeCells[1], g.FreeCells[2], g.FreeCells[3])
 
 	dirty := true
