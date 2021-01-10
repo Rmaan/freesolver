@@ -7,7 +7,7 @@ func GenerateGame() GameMoment {
 	var allCards []Card
 	for suit := Suit(0); suit < SuitCount; suit++ {
 		for rank := Rank(1); rank <= RankCount; rank++ {
-			allCards = append(allCards, Card{Suit: suit, Rank: rank})
+			allCards = append(allCards, NewCard(suit, rank))
 		}
 	}
 	rand.Shuffle(len(allCards), func(i, j int) {

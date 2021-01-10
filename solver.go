@@ -31,7 +31,7 @@ func (h *GameHeap) Pop() interface{} {
 	return item
 }
 
-func calcScore(g GameMoment) int {
+func calcScore(g GameMoment) int32 {
 	done := 0
 	for _, x := range g.Foundation {
 		done += int(x)
@@ -55,7 +55,7 @@ func calcScore(g GameMoment) int {
 			}
 		}
 	}
-	return done*1000 + freeCascades*200 + freecells*100 + sortedPairCount*5 - g.moves
+	return int32(done*500 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves))
 }
 
 type Solver struct {
@@ -63,10 +63,21 @@ type Solver struct {
 	cache map[GameMoment]bool
 }
 
-func (s *Solver) push(g GameMoment) {
-	if hasRepeats(&g) {
-		return
+func sortFreeCells(g *GameMoment) {
+	swapped := true
+	for swapped {
+		swapped = false
+		for i := 1; i < len(g.FreeCells); i++ {
+			if g.FreeCells[i-1] > g.FreeCells[i] {
+				g.FreeCells[i-1], g.FreeCells[i] = g.FreeCells[i], g.FreeCells[i-1]
+				swapped = true
+			}
+		}
 	}
+}
+
+func (s *Solver) push(g GameMoment) {
+	sortFreeCells(&g)
 	gBefore := g.before
 	gDepth := g.moves
 	gScore := g.score
@@ -86,10 +97,12 @@ func (s *Solver) push(g GameMoment) {
 }
 
 func NewSolver(g GameMoment) *Solver {
-	return &Solver{
-		heap:  &GameHeap{g},
+	s := &Solver{
+		heap:  &GameHeap{},
 		cache: map[GameMoment]bool{},
 	}
+	s.push(g)
+	return s
 }
 
 func (s *Solver) Solve() GameMoment {
@@ -111,44 +124,10 @@ func canMove(from, to Card) bool {
 	if to.IsEmpty() {
 		return true
 	}
-	if from.Rank != to.Rank-1 {
+	if from.Rank() != to.Rank()-1 {
 		return false
 	}
-	return from.Suit.IsBlack() != to.Suit.IsBlack()
-}
-
-func hasRepeats(g *GameMoment) bool {
-	gBefore := g.before
-	gDepth := g.moves
-	gScore := g.score
-	g.before = nil
-	g.moves = 0
-	g.score = 0
-
-	for old, count := gBefore, 0; old != nil && count < 5; old = old.before {
-		oldBefore := old.before
-		oldDepth := old.moves
-		oldScore := old.score
-		old.before = nil
-		old.moves = 0
-		old.score = 0
-		isEqual := *g == *old
-		old.before = oldBefore
-		old.moves = oldDepth
-		old.score = oldScore
-		if isEqual {
-			g.before = gBefore
-			g.moves = gDepth
-			g.score = gScore
-			return true
-		}
-		count++
-	}
-
-	g.before = gBefore
-	g.moves = gDepth
-	g.score = gScore
-	return false
+	return from.Suit().IsBlack() != to.Suit().IsBlack()
 }
 
 func (s *Solver) addMoves(g GameMoment) {
@@ -160,11 +139,11 @@ func (s *Solver) addMoves(g GameMoment) {
 			continue
 		}
 		card := g.cascadeCard(col)
-		if g.Foundation[card.Suit]+1 == card.Rank {
+		if g.Foundation[card.Suit()]+1 == card.Rank() {
 			g := g
 			g.moves++
 			g.before = gp
-			g.Foundation[card.Suit]++
+			g.Foundation[card.Suit()]++
 			g.cascadeRemove(col)
 			s.push(g)
 		}
@@ -172,12 +151,12 @@ func (s *Solver) addMoves(g GameMoment) {
 
 	// FreeCell to foundation
 	for idx, card := range g.FreeCells {
-		if g.Foundation[card.Suit]+1 == card.Rank {
+		if g.Foundation[card.Suit()]+1 == card.Rank() {
 			g := g
 			g.moves++
 			g.before = gp
-			g.Foundation[card.Suit]++
-			g.FreeCells[idx] = Card{}
+			g.Foundation[card.Suit()]++
+			g.FreeCells[idx] = EmptyCard
 			s.push(g)
 		}
 	}
@@ -193,7 +172,7 @@ func (s *Solver) addMoves(g GameMoment) {
 				g.moves++
 				g.before = gp
 				g.cascadePut(card, col)
-				g.FreeCells[idx] = Card{}
+				g.FreeCells[idx] = EmptyCard
 				s.push(g)
 			}
 		}

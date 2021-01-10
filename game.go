@@ -55,29 +55,38 @@ func (r Rank) String() string {
 	return fmt.Sprintf("<Invalid rank %d>", r)
 }
 
-type Card struct {
-	Suit Suit
-	Rank Rank
+type Card uint8
+var EmptyCard Card
+
+func NewCard(s Suit, r Rank) Card {
+	return Card(uint8(s & 3) | uint8(r << 2))
+}
+
+func (c Card) Suit() Suit {
+	return Suit(c & 3)
+}
+
+func (c Card) Rank() Rank {
+	return Rank(c >> 2)
 }
 
 func (c Card) String() string {
 	if c.IsEmpty() {
 		return "   "
 	}
-	if c.Rank == 10 {
-		return c.Suit.String() + c.Rank.String()
+	if c.Rank() == 10 {
+		return c.Suit().String() + c.Rank().String()
 	}
-	return c.Suit.String() + c.Rank.String() + " "
+	return c.Suit().String() + c.Rank().String() + " "
 }
 
 func (c Card) IsEmpty() bool {
-	zero := Card{}
-	return c == zero
+	return c == 0
 }
 
 const FreeCellCount = 4
 const CascadesCount = 8
-const MaxCascadeLen = 15
+const MaxCascadeLen = 14
 
 type GameMoment struct {
 	FreeCells   [FreeCellCount]Card
@@ -85,9 +94,9 @@ type GameMoment struct {
 	CascadeLens [CascadesCount]uint8
 	Foundation  [SuitCount]Rank
 
+	moves  int32
+	score  int32
 	before *GameMoment
-	moves  int
-	score  int
 }
 
 func (g GameMoment) String() string {
@@ -100,7 +109,7 @@ func (g GameMoment) String() string {
 		dirty = false
 		for col := 0; col < CascadesCount; col++ {
 			if row >= int(g.CascadeLens[col]) {
-				fmt.Fprintf(b, "%s  ", Card{})
+				fmt.Fprintf(b, "%s  ", EmptyCard)
 			} else {
 				fmt.Fprintf(b, "%s  ", g.Cascades[col][row])
 				dirty = true
@@ -132,7 +141,7 @@ func (g *GameMoment) cascadePut(card Card, col int) {
 }
 
 func (g *GameMoment) cascadeRemove(col int) {
-	g.Cascades[col][g.CascadeLens[col]-1] = Card{}
+	g.Cascades[col][g.CascadeLens[col]-1] = EmptyCard
 	g.CascadeLens[col]--
 }
 
