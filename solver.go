@@ -33,9 +33,28 @@ func (h *GameHeap) Pop() interface{} {
 
 func calcScore(g GameMoment) int32 {
 	done := 0
+	maxFoundation := g.Foundation[0]
+	minFoundation := g.Foundation[0]
 	for _, x := range g.Foundation {
 		done += int(x)
+		if x > maxFoundation {
+			maxFoundation = x
+		}
+		if x < minFoundation {
+			minFoundation = x
+		}
 	}
+
+	if maxFoundation - minFoundation > 3 {
+		done--
+	}
+	if maxFoundation - minFoundation > 6 {
+		done--
+	}
+	if maxFoundation - minFoundation > 9 {
+		done--
+	}
+
 	freecells := 0
 	for _, x := range g.FreeCells {
 		if x.IsEmpty() {
@@ -49,13 +68,26 @@ func calcScore(g GameMoment) int32 {
 			freeCascades++
 			continue
 		}
-		for row := uint8(1); row < g.CascadeLens[col]; row++ {
-			if canMove(g.Cascades[col][row], g.Cascades[col][row-1]) {
-				sortedPairCount++
+		sequence := 0
+		for row := g.CascadeLens[col] - 1; row >= 1; row-- {
+			if !canMove(g.Cascades[col][row], g.Cascades[col][row-1]) {
+				break
+			}
+			sequence++
+		}
+
+		cof := 1
+		if sequence == int(g.CascadeLens[col] - 1) {
+			cof = 10
+			if g.cascadeCard(col).Rank() == King {
+				cof = 50
+			} else if g.cascadeCard(col).Rank() == Queen {
+				cof = 30
 			}
 		}
+		sortedPairCount += cof * sequence
 	}
-	return int32(done*500 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves))
+	return int32(done*500 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves) * 10)
 }
 
 type Solver struct {

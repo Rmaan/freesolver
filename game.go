@@ -36,6 +36,8 @@ type Rank uint8
 
 const RankCount = 13
 const King Rank = 13
+const Queen Rank = 12
+const Jack Rank = 11
 
 func (r Rank) String() string {
 	switch r {
@@ -47,9 +49,9 @@ func (r Rank) String() string {
 		return strconv.Itoa(int(r))
 	case 11:
 		return "J"
-	case 12:
+	case Queen:
 		return "Q"
-	case 13:
+	case King:
 		return "K"
 	}
 	return fmt.Sprintf("<Invalid rank %d>", r)
@@ -86,7 +88,7 @@ func (c Card) IsEmpty() bool {
 
 const FreeCellCount = 4
 const CascadesCount = 8
-const MaxCascadeLen = 17
+const MaxCascadeLen = 18
 
 type GameMoment struct {
 	FreeCells   [FreeCellCount]Card
