@@ -48,15 +48,15 @@ func calcScore(g GameMoment) int32 {
 		}
 	}
 
-	if maxFoundation-minFoundation > 3 {
-		foundationScore -= 10
-	}
-	if maxFoundation-minFoundation > 6 {
-		foundationScore -= 20
-	}
-	if maxFoundation-minFoundation > 9 {
-		foundationScore -= 30
-	}
+	//if maxFoundation-minFoundation > 3 {
+	//	foundationScore -= 10
+	//}
+	//if maxFoundation-minFoundation > 6 {
+	//	foundationScore -= 20
+	//}
+	//if maxFoundation-minFoundation > 9 {
+	//	foundationScore -= 30
+	//}
 
 	freecells := 0
 	for _, x := range g.FreeCells {
@@ -65,7 +65,7 @@ func calcScore(g GameMoment) int32 {
 		}
 	}
 	freeCascades := 0
-	sortedPairCount := 0
+	sortedScore := 0
 	for col := range g.Cascades {
 		if g.CascadeLens[col] == 0 {
 			freeCascades++
@@ -81,18 +81,18 @@ func calcScore(g GameMoment) int32 {
 
 		cof := 1
 		if sequence == int(g.CascadeLens[col]-1) {
-			cof = 10
+			cof = 40
 			if g.Cascades[col][0].Rank() == King {
-				cof = 50
+				cof = 80
 			} else if g.Cascades[col][0].Rank() == Queen {
-				cof = 30
+				cof = 60
 			} else if g.Cascades[col][0].Rank() == Jack {
-				cof = 15
+				cof = 48
 			}
 		}
-		sortedPairCount += cof * sequence
+		sortedScore += cof * sequence
 	}
-	return int32(foundationScore*50 + freeCascades*500 + freecells*500 + sortedPairCount*5 - int(g.moves)*10)
+	return int32(foundationScore*50 + freeCascades*500 + freecells*300 + sortedScore*5 - int(g.Moves)*10)
 }
 
 func calcMinMovesNeeded(g *GameMoment) int32 {
@@ -138,16 +138,16 @@ func (s *Solver) push(g GameMoment) {
 	sortFreeCells(&g)
 	sortCascades(&g)
 	gBefore := g.before
-	gDepth := g.moves
+	gDepth := g.Moves
 	g.before = nil
-	g.moves = 0
+	g.Moves = 0
 	g.score = 0
 	if s.cache[g] {
 		return
 	}
 	s.cache[g] = true
 	g.before = gBefore
-	g.moves = gDepth
+	g.Moves = gDepth
 	g.score = calcScore(g)
 
 	heap.Push(s.heap, g)
@@ -166,18 +166,20 @@ func NewSolver(g GameMoment) *Solver {
 func (s *Solver) Solve() GameMoment {
 	for tries := 1; s.heap.Len() > 0; tries++ {
 		g := heap.Pop(s.heap).(GameMoment)
-		if g.moves+calcMinMovesNeeded(&g) >= s.shortestWin {
+		if s.Debug && tries%100000 == 0 {
+			log.Printf("tried=%dK queue=%dK cache=%dM Moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.Moves, g.score)
+			log.Println(g)
+		}
+		if g.Moves+calcMinMovesNeeded(&g) >= s.shortestWin {
 			continue
 		}
 		if g.isWon() {
 			if s.Debug {
-				log.Printf("WON!!! tried=%dK queue=%dK cache=%dM moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
+				log.Printf("WON!!! tried=%dK queue=%dK cache=%dM Moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.Moves, g.score)
 			}
-			s.shortestWin = g.moves
+			s.shortestWin = g.Moves
 			return g
-		}
-		if s.Debug && tries%100000 == 0 {
-			log.Printf("tried=%dK queue=%dK cache=%dM moves=%d score=%d", tries/1000, s.heap.Len()/1000, len(s.cache)/1000000, g.moves, g.score)
+			//continue
 		}
 		s.addMoves(g)
 	}
@@ -194,6 +196,13 @@ func canMove(from, to Card) bool {
 	return from.Suit().IsBlack() != to.Suit().IsBlack()
 }
 
+func newMoment(g *GameMoment) GameMoment {
+	newG := *g
+	newG.Moves++
+	newG.before = g
+	return newG
+}
+
 func (s *Solver) addMoves(g GameMoment) {
 	gp := &g
 
@@ -204,9 +213,7 @@ func (s *Solver) addMoves(g GameMoment) {
 		}
 		card := g.cascadeCard(col)
 		if g.Foundation[card.Suit()]+1 == card.Rank() {
-			g := g
-			g.moves++
-			g.before = gp
+			g := newMoment(gp)
 			g.Foundation[card.Suit()]++
 			g.cascadeRemove(col)
 			s.push(g)
@@ -217,9 +224,7 @@ func (s *Solver) addMoves(g GameMoment) {
 	// FreeCell to foundation
 	for idx, card := range g.FreeCells {
 		if g.Foundation[card.Suit()]+1 == card.Rank() {
-			g := g
-			g.moves++
-			g.before = gp
+			g := newMoment(gp)
 			g.Foundation[card.Suit()]++
 			g.FreeCells[idx] = EmptyCard
 			s.push(g)
@@ -234,9 +239,7 @@ func (s *Solver) addMoves(g GameMoment) {
 		}
 		for col := range g.Cascades {
 			if g.CascadeLens[col] == 0 || canMove(card, g.cascadeCard(col)) {
-				g := g
-				g.moves++
-				g.before = gp
+				g := newMoment(gp)
 				g.cascadePut(card, col)
 				g.FreeCells[idx] = EmptyCard
 				s.push(g)
@@ -254,9 +257,7 @@ func (s *Solver) addMoves(g GameMoment) {
 				continue
 			}
 			if g.CascadeLens[colTo] == 0 || canMove(g.cascadeCard(colFrom), g.cascadeCard(colTo)) {
-				g := g
-				g.moves++
-				g.before = gp
+				g := newMoment(gp)
 				g.cascadePut(g.cascadeCard(colFrom), colTo)
 				g.cascadeRemove(colFrom)
 				s.push(g)
@@ -279,9 +280,7 @@ func (s *Solver) addMoves(g GameMoment) {
 		if g.CascadeLens[colFrom] == 0 {
 			continue
 		}
-		g := g
-		g.moves++
-		g.before = gp
+		g := newMoment(gp)
 		g.FreeCells[emptyFreecellIdx] = g.cascadeCard(colFrom)
 		g.cascadeRemove(colFrom)
 		s.push(g)

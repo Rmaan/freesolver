@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"freesolver"
 	"log"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"time"
 )
 
@@ -30,20 +33,24 @@ KH 3C AS 4D 4S QH
 func solveAllSeeds() {
 	totalDuration := time.Duration(0)
 
-	for s, count := int64(1), 1; ; s++ {
+	fmt.Println()
+	for s, count := int64(1), 1; count <= 200; s++ {
 		rand.Seed(s)
 		g := freesolver.GenerateGame()
 		start := time.Now()
 		solver := freesolver.NewSolver(g)
-		solver.Solve()
+		won := solver.Solve()
 		duration := time.Since(start)
 		totalDuration += duration
-		log.Printf("Seed %d won! average solve time: %v", s, totalDuration/time.Duration(count))
+		fmt.Printf("\r")
+		fmt.Printf("Seed %d won in %d moves in %v\n", s, won.Moves, duration)
 		if duration > time.Second {
-			log.Printf("LONG SEED %d TOOK %s", s, duration)
+			fmt.Printf("LONG SEED %d TOOK %s\n", s, duration)
 		}
+		fmt.Printf("Average solve time: %v", totalDuration/time.Duration(count))
 		count++
 	}
+	fmt.Println()
 }
 
 func solveSpecificSeed(specificSeed int64) {
@@ -60,7 +67,16 @@ func solveSpecificSeed(specificSeed int64) {
 }
 
 func main() {
+	if false {
+		f, err := os.Create("cpu.profile")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
+
 	solveAllSeeds()
 	//solveHardcodedCase()
-	//solveSpecificSeed(53)
+	//solveSpecificSeed(21)
 }

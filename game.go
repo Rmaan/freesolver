@@ -103,7 +103,7 @@ type GameMoment struct {
 	CascadeLens [CascadesCount]uint8
 	Foundation  [SuitCount]Rank
 
-	moves  int32
+	Moves  int32
 	score  int32
 	before *GameMoment
 }
